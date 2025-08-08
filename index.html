@@ -39,21 +39,14 @@
 
   <script>
     async function obtenerDatos() {
-      // Aquí iría el código para autenticarte y obtener el token de la API
-      const token = "TU_TOKEN_AQUI"; // Reemplazar por token real
-
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json"
-      };
-
-	  //const response = await fetch("https://api.invertironline.com/api/v2/portafolio/argentina", { headers });
-	  const response = await fetch("/api/portfolio");
-
-
-      const data = await response.json();
-
-      actualizarDashboard(data);
+      try {
+        const response = await fetch("/api/portfolio");
+        const data = await response.json();
+        actualizarDashboard(data);
+      } catch (error) {
+        console.error("Error al obtener los datos:", error);
+        alert("No se pudo obtener el portfolio. Verificá tu conexión o configuración del backend.");
+      }
     }
 
     function actualizarDashboard(data) {
@@ -64,6 +57,11 @@
       document.getElementById("valorTotal").textContent = `$${valorTotal.toFixed(2)}`;
       document.getElementById("ganancia").textContent = `$${ganancia.toFixed(2)}`;
       document.getElementById("rendimiento").textContent = `${rendimiento.toFixed(2)}%`;
+
+      if (!data.activos || !Array.isArray(data.activos) || data.activos.length === 0) {
+        console.warn("No se encontraron activos en la respuesta.");
+        return;
+      }
 
       const pieData = {
         labels: data.activos.map(a => a.descripcion),
@@ -85,7 +83,6 @@
         data: pieData
       });
 
-      // Simulación de valores históricos (reemplazar por endpoint real si existe)
       const historico = data.activos[0]?.valoresHistoricos || [];
       const lineData = {
         labels: historico.map(d => d.fecha),
