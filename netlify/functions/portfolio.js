@@ -11,7 +11,7 @@ async function getToken() {
     return tokenData.access_token;
   }
 
-  const { IOL_USER, IOL_PASS, IOL_CLIENT_ID, IOL_CLIENT_SECRET } = process.env;
+  const { IOL_USER, IOL_PASS } = process.env;
 
   const response = await axios.post('https://api.invertironline.com/token', new URLSearchParams({
     username: IOL_USER,
@@ -20,10 +20,6 @@ async function getToken() {
   }), {
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    auth: {
-      username: IOL_CLIENT_ID,
-      password: IOL_CLIENT_SECRET
     }
   });
 
