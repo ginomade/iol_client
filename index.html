@@ -54,7 +54,8 @@
       const ganancia = data.gananciaTotalEnDolares || 0;
       const rendimiento = data.rendimientoTotal || 0;
 
-      document.getElementById("valorTotal").textContent = `$${valorTotal.toFixed(2)}`;
+      //document.getElementById("valorTotal").textContent = `$${valorTotal.toFixed(2)}`;
+	  document.getElementById("valorTotal").textContent = `$${data}`;
       document.getElementById("ganancia").textContent = `$${ganancia.toFixed(2)}`;
       document.getElementById("rendimiento").textContent = `${rendimiento.toFixed(2)}%`;
 
