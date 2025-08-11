@@ -1,107 +1,131 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Portfolio - InvertirOnline</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IOL Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body class="bg-gray-100 text-gray-900 font-sans">
-  <div class="container mx-auto p-6">
-    <h1 class="text-3xl font-bold mb-4 text-center">Mi Portfolio - InvertirOnline</h1>
+<body class="bg-gray-50 text-gray-900">
+  <main class="max-w-5xl mx-auto p-6 space-y-6">
+    <header class="flex items-center justify-between">
+      <h1 class="text-2xl md:text-3xl font-bold">Portfolio InvertirOnline</h1>
+      <span id="pais" class="text-sm text-gray-500"></span>
+    </header>
 
-    <div id="stats" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-      <div class="bg-white p-4 shadow rounded-lg">
-        <h2 class="text-lg font-semibold">Valor Total</h2>
-        <p id="valorTotal" class="text-2xl font-bold text-green-600">$0</p>
+    <!-- KPIs -->
+    <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-500">Total</p>
+        <p id="kpiTotal" class="text-2xl font-semibold">$0</p>
       </div>
-      <div class="bg-white p-4 shadow rounded-lg">
-        <h2 class="text-lg font-semibold">Ganancia / Pérdida</h2>
-        <p id="ganancia" class="text-2xl font-bold text-blue-600">$0</p>
+      <div class="bg-white p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-500">Disponible</p>
+        <p id="kpiDisponible" class="text-2xl font-semibold">$0</p>
       </div>
-      <div class="bg-white p-4 shadow rounded-lg">
-        <h2 class="text-lg font-semibold">Rendimiento</h2>
-        <p id="rendimiento" class="text-2xl font-bold text-purple-600">0%</p>
+      <div class="bg-white p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-500">Valorizado en Títulos</p>
+        <p id="kpiValorizado" class="text-2xl font-semibold">$0</p>
       </div>
-    </div>
+      <div class="bg-white p-4 rounded-xl shadow">
+        <p class="text-sm text-gray-500">Comprometido</p>
+        <p id="kpiComprometido" class="text-2xl font-semibold">$0</p>
+      </div>
+    </section>
 
-    <div class="bg-white p-4 shadow rounded-lg mb-8">
-      <h2 class="text-xl font-semibold mb-2">Distribución de activos</h2>
-      <canvas id="pieChart"></canvas>
-    </div>
+    <!-- Charts -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h2 class="font-semibold mb-2">Distribución por Activo</h2>
+        <canvas id="pieActivos"></canvas>
+      </div>
+      <div class="bg-white p-4 rounded-xl shadow">
+        <h2 class="font-semibold mb-2">Caja</h2>
+        <canvas id="barCaja"></canvas>
+      </div>
+    </section>
 
-    <div class="bg-white p-4 shadow rounded-lg">
-      <h2 class="text-xl font-semibold mb-2">Historial de valores</h2>
-      <canvas id="lineChart"></canvas>
-    </div>
-  </div>
+    <!-- Tabla de activos -->
+    <section class="bg-white p-4 rounded-xl shadow">
+      <h2 class="font-semibold mb-3">Detalle de activos</h2>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+          <thead class="text-left text-gray-500">
+            <tr>
+              <th class="py-2">Símbolo</th>
+              <th class="py-2">Descripción</th>
+              <th class="py-2">Cantidad</th>
+              <th class="py-2">Último Precio</th>
+              <th class="py-2">Valorizado</th>
+            </tr>
+          </thead>
+          <tbody id="tablaActivos" class="divide-y"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
 
   <script>
-    async function obtenerDatos() {
+    const fmt = (n) => new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 2 }).format(Number(n||0));
+
+    async function cargar() {
       try {
-        const response = await fetch("/api/portfolio");
-        const data = await response.json();
-        actualizarDashboard(data);
-      } catch (error) {
-        console.error("Error al obtener los datos:", error);
-        alert("No se pudo obtener el portfolio. Verificá tu conexión o configuración del backend.");
+        const res = await fetch('/api/dashboard');
+        if (!res.ok) throw new Error(await res.text());
+        const { portfolio, estadoCuenta, totales, distribucion } = await res.json();
+
+        // Encabezado
+        document.getElementById('pais').textContent = `País portafolio: ${portfolio?.pais || '-'}`;
+
+        // KPIs
+        document.getElementById('kpiTotal').textContent = fmt(totales.total || estadoCuenta?.totalEnPesos || 0);
+        document.getElementById('kpiDisponible').textContent = fmt(totales.disponible);
+        document.getElementById('kpiValorizado').textContent = fmt(totales.titulosValorizados);
+        document.getElementById('kpiComprometido').textContent = fmt(totales.comprometido);
+
+        // Pie de activos (por valorizado)
+        const pieLabels = distribucion.map(d => d.descripcion);
+        const pieData = distribucion.map(d => d.valorizado || (d.cantidad * d.ultimoPrecio));
+        new Chart(document.getElementById('pieActivos'), {
+          type: 'pie',
+          data: { labels: pieLabels, datasets: [{ data: pieData }] },
+        });
+
+        // Barra de caja (disponible vs comprometido)
+        new Chart(document.getElementById('barCaja'), {
+          type: 'bar',
+          data: {
+            labels: ['Disponible', 'Comprometido', 'Valorizado'],
+            datasets: [{ data: [totales.disponible, totales.comprometido, totales.titulosValorizados] }]
+          },
+          options: {
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+
+        // Tabla
+        const tbody = document.getElementById('tablaActivos');
+        tbody.innerHTML = '';
+        distribucion.forEach(d => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="py-2 pr-4">${d.simbolo}</td>
+            <td class="py-2 pr-4">${d.descripcion}</td>
+            <td class="py-2 pr-4 text-right">${d.cantidad}</td>
+            <td class="py-2 pr-4 text-right">${fmt(d.ultimoPrecio)}</td>
+            <td class="py-2 pr-4 text-right">${fmt(d.valorizado || (d.cantidad * d.ultimoPrecio))}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+      } catch (e) {
+        console.error(e);
+        alert('No se pudo cargar el dashboard. Ver consola para más detalles.');
       }
     }
 
-    function actualizarDashboard(data) {
-      const valorTotal = data.valorTotalEnDolares || 0;
-      const ganancia = data.gananciaTotalEnDolares || 0;
-      const rendimiento = data.rendimientoTotal || 0;
-
-      //document.getElementById("valorTotal").textContent = `$${valorTotal.toFixed(2)}`;
-	  document.getElementById("valorTotal").textContent = `$${data}`;
-      document.getElementById("ganancia").textContent = `$${ganancia.toFixed(2)}`;
-      document.getElementById("rendimiento").textContent = `${rendimiento.toFixed(2)}%`;
-
-      if (!data.activos || !Array.isArray(data.activos) || data.activos.length === 0) {
-        console.warn("No se encontraron activos en la respuesta.");
-        return;
-      }
-
-      const pieData = {
-        labels: data.activos.map(a => a.descripcion),
-        datasets: [{
-          label: 'Activos',
-          data: data.activos.map(a => a.valorEnDolares),
-          backgroundColor: [
-            'rgba(255, 99, 132, 0.6)',
-            'rgba(54, 162, 235, 0.6)',
-            'rgba(255, 206, 86, 0.6)',
-            'rgba(75, 192, 192, 0.6)',
-            'rgba(153, 102, 255, 0.6)',
-          ]
-        }]
-      };
-
-      new Chart(document.getElementById('pieChart'), {
-        type: 'pie',
-        data: pieData
-      });
-
-      const historico = data.activos[0]?.valoresHistoricos || [];
-      const lineData = {
-        labels: historico.map(d => d.fecha),
-        datasets: [{
-          label: 'Valor histórico',
-          data: historico.map(d => d.valorEnDolares),
-          borderColor: 'rgba(75, 192, 192, 1)',
-          fill: false
-        }]
-      };
-
-      new Chart(document.getElementById('lineChart'), {
-        type: 'line',
-        data: lineData
-      });
-    }
-
-    obtenerDatos();
+    cargar();
   </script>
 </body>
 </html>
